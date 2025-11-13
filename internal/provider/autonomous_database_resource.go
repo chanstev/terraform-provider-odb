@@ -58,6 +58,7 @@ type AutonomousDatabaseResourceModel struct {
 	// Database configuration
 	DbVersion                types.String `tfsdk:"db_version"`
 	DbName                   types.String `tfsdk:"db_name"`
+	DatabaseType             types.String `tfsdk:"database_type"`
 	CharacterSet             types.String `tfsdk:"character_set"`
 	NcharacterSet            types.String `tfsdk:"ncharacter_set"`
 
@@ -174,6 +175,12 @@ func (r *AutonomousDatabaseResource) Schema(_ context.Context, _ resource.Schema
 				MarkdownDescription: "Database name",
 				Optional:            true,
 				Computed:            true,
+			},
+			"database_type": schema.StringAttribute{
+				MarkdownDescription: "Database type (Regular or Clone)",
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("Regular"),
 			},
 			"character_set": schema.StringAttribute{
 				MarkdownDescription: "Database character set",
@@ -566,6 +573,7 @@ func (r *AutonomousDatabaseResource) buildAzureCreateBody(plan *AutonomousDataba
 		"location": plan.AzureRegion.ValueString(),
 		"properties": map[string]interface{}{
 			"displayName":                         plan.DisplayName.ValueString(),
+			"databaseType":                        plan.DatabaseType.ValueString(),
 			"computeModel":                        plan.ComputeModel.ValueString(),
 			"computeCount":                        plan.ComputeCount.ValueInt64(),
 			"dataStorageSizeInTbs":                plan.DataStorageSizeInTbs.ValueInt64(),
@@ -636,6 +644,11 @@ func (r *AutonomousDatabaseResource) extractAzureResponse(plan *AutonomousDataba
 		// Time created
 		if timeCreated, ok := properties["timeCreated"].(string); ok {
 			plan.TimeCreated = types.StringValue(timeCreated)
+		}
+
+		// Database type
+		if databaseType, ok := properties["databaseType"].(string); ok {
+			plan.DatabaseType = types.StringValue(databaseType)
 		}
 	}
 
