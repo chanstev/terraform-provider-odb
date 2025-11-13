@@ -1,0 +1,64 @@
+# Base Database Resource Configuration
+#
+# Field mapping format: terraform_field: [cloud1.api_field (ops), cloud2.api_field (ops)]
+# Operations: c=create, r=read, u=update, d=delete
+# * = required for that operation
+# r* = master value (takes priority when values conflict during read)
+#
+# Expression syntax: field: cloud.api.path|regex_pattern for extracted values
+# Example: oci_region: azure.properties.ociUrl|(?i:region=)([^?&/]+)
+# - Extract oci_region from Azure's ociUrl field using regex pattern
+#
+# Cloud-specific field mapping rules:
+# - OCI field_mapping: Only contains OCI API fields
+# - Azure field_mapping: Only contains Azure and OCI API fields (no GCP, AWS, etc.)
+# - Cross-cloud operations: Azure can update certain fields via OCI APIs using extracted identifiers
+
+# Cloud-specific API endpoints and field mappings
+oci:
+  field_mapping:
+    oci_ocid: [oci.id (r*)]
+    oci_region: [oci.region (c*r*)]
+    db_home_id: [oci.dbHomeId (c*r*)]
+    db_name: [oci.database.dbName (c*r*)]
+    admin_password: [oci.database.adminPassword (c*)]
+    pdb_name: [oci.database.pdbName (c*r*)]
+    db_version: [oci.dbVersion (r*u)]
+    compartment_id: [oci.compartmentId (c*r*)]
+    lifecycle_state: [oci.lifecycleState (r*)]
+    time_created: [oci.timeCreated (r*)]
+
+  # Endpoint placeholders use field names from field_mapping
+  # When primary_cloud is not OCI, oci_region and oci_ocid are extracted from Azure's ociUrl
+  create: "POST https://database.{oci_region}.oraclecloud.com/20160918/databases"
+  read: "GET https://database.{oci_region}.oraclecloud.com/20160918/databases/{oci_ocid}"
+  update: "PUT https://database.{oci_region}.oraclecloud.com/20160918/databases/{oci_ocid}"
+  delete: "DELETE https://database.{oci_region}.oraclecloud.com/20160918/databases/{oci_ocid}"
+
+azure:
+  field_mapping:
+    azure_id: [azure.id (r*)]
+    azure_region: [azure.location (c*r*)]
+    db_name: [azure.properties.databaseName (c*r*), oci.database.dbName (ru)]
+    admin_password: [azure.properties.adminPassword (c*)]
+    db_version: [azure.properties.version (c*r*u), oci.dbVersion (ru)]
+    pdb_name: [azure.properties.pdbName (c*r*)]
+    lifecycle_state: [azure.properties.lifecycleState (r*), oci.lifecycleState (r)]
+    provisioning_state: [azure.properties.provisioningState (r*)]
+    time_created: [azure.properties.timeCreated (r*), oci.timeCreated (r)]
+
+    # Cross-cloud fields: extracted from Azure response for OCI API calls
+    oci_url: [azure.properties.ociUrl (r)]
+    oci_region: [azure.properties.ociUrl|(?i:region=)([^?&/]+) (r)]
+    oci_ocid: [azure.properties.ociUrl|(?i:databases/)([^?&/]+) (r)]
+    oci_compartment_id: [azure.properties.ociUrl|(?i:compartmentId=)([^?&/]+) (r)]
+
+  # Azure native CRUD operations
+  create: "PUT https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/databases/{name}?api-version=2023-09-01"
+  read: "GET https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/databases/{name}?api-version=2023-09-01"
+  update: "PATCH https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/databases/{name}?api-version=2023-09-01"
+  delete: "DELETE https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/databases/{name}?api-version=2023-09-01"
+
+  # Cross-cloud operations: OCI API calls using extracted oci_region and oci_ocid
+  oci_read: "GET https://database.{oci_region}.oraclecloud.com/20160918/databases/{oci_ocid}"
+  oci_update: "PUT https://database.{oci_region}.oraclecloud.com/20160918/databases/{oci_ocid}"

@@ -1,0 +1,181 @@
+# Global Configuration
+# Shared settings that apply across all resources
+
+# Default timeout for API calls (in seconds)
+default_timeout: 300
+
+# Retry configuration
+retry:
+  max_attempts: 3
+  initial_delay_ms: 1000
+  max_delay_ms: 30000
+  backoff_multiplier: 2.0
+
+# Variable substitution patterns
+# These will be replaced in endpoint URLs
+variables:
+  - region
+  - subscription_id
+  - resource_group
+  - project_id
+  - id
+  - name
+  - compartment_id
+
+# Lifecycle state mappings across clouds
+# Maps different cloud provider states to normalized states
+state_mappings:
+  lifecycle_state:
+    oci:
+      PROVISIONING: "creating"
+      AVAILABLE: "available"
+      TERMINATING: "deleting"
+      TERMINATED: "deleted"
+      FAILED: "failed"
+      UPDATING: "updating"
+    azure:
+      Succeeded: "available"
+      Failed: "failed"
+      Deleting: "deleting"
+      Provisioning: "creating"
+      Updating: "updating"
+    gcp:
+      CREATING: "creating"
+      READY: "available"
+      DELETING: "deleting"
+      FAILED: "failed"
+      UPDATING: "updating"
+    aws:
+      creating: "creating"
+      available: "available"
+      deleting: "deleting"
+      deleted: "deleted"
+      failed: "failed"
+      modifying: "updating"
+
+# JSON response structure mappings between clouds
+# General mapping rule: azure.properties = oci (root level)
+# Exception: Fields outside "properties" are cloud-specific
+response_structure:
+  # Default mapping rule
+  default_mapping:
+    azure: "properties"      # Azure wraps shared fields in properties object
+    oci: ""                  # OCI shared fields at root level
+
+  # Cloud-specific fields (outside the default mapping)
+  # Any field outside azure.properties or oci root is unique to that cloud
+  azure_specific:
+    - "id"                   # Azure resource ID
+    - "name"                 # Azure resource name
+    - "location"             # Azure region
+    - "type"                 # Azure resource type
+    - "tags"                 # Azure tags (exposed as azure_tags in Terraform)
+    - "systemData"           # Azure system metadata
+    - "properties.vnetId"    # Azure-specific networking
+    - "properties.provisioningState"  # Azure provisioning state
+
+  oci_specific:
+    - "id"                   # OCI OCID (different format from Azure ID)
+    - "compartmentId"        # OCI tenancy structure
+    - "region"               # OCI region code
+    - "definedTags"          # OCI predefined tags
+    - "freeformTags"         # OCI freeform tags (exposed as oci_tags in Terraform)
+    - "lifecycleDetails"     # OCI lifecycle details
+    - "subscriptionId"       # OCI subscription (not Azure subscription)
+    - "autonomousContainerDatabaseId"
+    - "keyStoreId"
+    - "keyStoreWalletName"
+
+  # Note: Tags are kept separate per cloud
+  # - azure_tags maps to azure.tags
+  # - oci_tags maps to oci.freeformTags
+  # They are independent and changes to one don't affect the other
+
+# Authentication configuration patterns
+authentication:
+  oci:
+    type: "oci_config"
+    config_file: "~/.oci/config"
+    profile: "DEFAULT"
+    required_fields:
+      - tenancy
+      - user
+      - fingerprint
+      - key_file
+      - region
+
+  azure:
+    type: "azure_cli"
+    required_fields:
+      - subscription_id
+      - tenant_id
+    # Can also use service principal or managed identity
+
+# HTTP headers by cloud provider
+http_headers:
+  oci:
+    request:
+      Content-Type: "application/json"
+      opc-request-id: "{generated}"
+    response_keys:
+      - "opc-request-id"
+      - "opc-work-request-id"
+      - "etag"
+
+  azure:
+    request:
+      Content-Type: "application/json"
+      x-ms-client-request-id: "{generated}"
+    response_keys:
+      - "x-ms-request-id"
+      - "x-ms-correlation-request-id"
+      - "azure-asyncoperation"
+      - "location"
+      - "etag"
+
+# Async operation polling configuration
+async_operations:
+  azure:
+    status_field: "properties.lifecycleState"  # Check lifecycle state (AVAILABLE, PROVISIONING, etc.)
+    provisioning_field: "properties.provisioningState"  # Also check Azure provisioning state
+    terminal_states:
+      lifecycle:
+        - "AVAILABLE"
+        - "FAILED"
+        - "TERMINATED"
+      provisioning:
+        - "Succeeded"
+        - "Failed"
+        - "Canceled"
+    in_progress_states:
+      lifecycle:
+        - "PROVISIONING"
+        - "UPDATING"
+        - "STARTING"
+        - "STOPPING"
+      provisioning:
+        - "Provisioning"
+        - "Updating"
+        - "Deleting"
+        - "Accepted"
+    poll_interval_seconds: 30
+    max_poll_duration_minutes: 60
+    # Wait for AVAILABLE state before performing cross-cloud OCI updates
+    wait_for_available_before_oci_update: true
+
+  oci:
+    status_field: "lifecycleState"
+    terminal_states:
+      - "AVAILABLE"
+      - "TERMINATED"
+      - "FAILED"
+    in_progress_states:
+      - "PROVISIONING"
+      - "UPDATING"
+      - "TERMINATING"
+      - "STARTING"
+      - "STOPPING"
+      - "BACKUP_IN_PROGRESS"
+      - "RESTORE_IN_PROGRESS"
+    poll_interval_seconds: 30
+    max_poll_duration_minutes: 60

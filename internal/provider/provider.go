@@ -5,7 +5,7 @@ package provider
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -16,42 +16,73 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithFunctions = &ScaffoldingProvider{}
-var _ provider.ProviderWithEphemeralResources = &ScaffoldingProvider{}
+// Ensure ODBProvider satisfies various provider interfaces.
+var _ provider.Provider = &ODBProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// ODBProvider defines the provider implementation.
+type ODBProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// AzureConfig describes Azure-specific configuration
+type AzureConfig struct {
+	SubscriptionID types.String `tfsdk:"subscription_id"`
+	TenantID       types.String `tfsdk:"tenant_id"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+// OCIConfig describes OCI-specific configuration
+type OCIConfig struct {
+	ConfigFileProfile types.String `tfsdk:"config_file_profile"`
+}
+
+// ODBProviderModel describes the provider data model.
+type ODBProviderModel struct {
+	Azure *AzureConfig `tfsdk:"azure"`
+	OCI   *OCIConfig   `tfsdk:"oci"`
+}
+
+func (p *ODBProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "omc"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *ODBProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		MarkdownDescription: "Oracle Multi-Cloud (OMC) provider for managing Oracle Database resources across multiple clouds",
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
+			"azure": schema.SingleNestedAttribute{
+				MarkdownDescription: "Azure authentication configuration. Uses Azure CLI by default.",
 				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"subscription_id": schema.StringAttribute{
+						MarkdownDescription: "Azure subscription ID",
+						Optional:            true,
+					},
+					"tenant_id": schema.StringAttribute{
+						MarkdownDescription: "Azure tenant ID",
+						Optional:            true,
+					},
+				},
+			},
+			"oci": schema.SingleNestedAttribute{
+				MarkdownDescription: "OCI authentication configuration. Uses ~/.oci/config by default.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"config_file_profile": schema.StringAttribute{
+						MarkdownDescription: "OCI config file profile name (default: DEFAULT)",
+						Optional:            true,
+					},
+				},
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *ODBProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data ODBProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
@@ -59,42 +90,63 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	// Load YAML configurations
+	configLoader, err := NewConfigLoader()
+	if err != nil {
+		resp.Diagnostics.AddWarning(
+			"Configuration Loading Warning",
+			fmt.Sprintf("Failed to load YAML configurations: %s. Will use defaults.", err.Error()),
+		)
+	}
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	// Create provider data with CLI executor and config loader
+	providerData := &ProviderData{
+		CLIExecutor:  NewCLIExecutor(),
+		ConfigLoader: configLoader,
+		Config:       &data,
+	}
+
+	resp.DataSourceData = providerData
+	resp.ResourceData = providerData
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+// ProviderData contains shared provider configuration
+type ProviderData struct {
+	CLIExecutor  *CLIExecutor
+	ConfigLoader *ConfigLoader
+	Config       *ODBProviderModel
+}
+
+func (p *ODBProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewAutonomousDatabaseResource,
+		NewBaseDatabaseResource,
 	}
 }
 
-func (p *ScaffoldingProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+func (p *ODBProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
-		NewExampleEphemeralResource,
+		// No ephemeral resources implemented yet
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *ODBProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewOMCContextDataSource,
+		NewAutonomousDatabaseDataSource,
+		NewBaseDatabaseDataSource,
 	}
 }
 
-func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.Function {
+func (p *ODBProvider) Functions(ctx context.Context) []func() function.Function {
 	return []func() function.Function{
-		NewExampleFunction,
+		// No functions implemented yet
 	}
 }
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &ODBProvider{
 			version: version,
 		}
 	}

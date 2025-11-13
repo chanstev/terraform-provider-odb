@@ -1,0 +1,96 @@
+# Autonomous Database Resource Configuration
+#
+# Field mapping format: terraform_field: [cloud1.api_field (ops), cloud2.api_field (ops)]
+# Operations: c=create, r=read, u=update, d=delete
+# * = required for that operation
+# r* = master value (takes priority when values conflict during read)
+#
+# Expression syntax: field: cloud.api.path|regex_pattern for extracted values
+# Example: oci_region: azure.properties.ociUrl|(?i:region=)([^?&/]+)
+# - Extract oci_region from Azure's ociUrl field using regex pattern
+#
+# Cloud-specific field mapping rules:
+# - OCI field_mapping: Only contains OCI API fields
+# - Azure field_mapping: Only contains Azure and OCI API fields (no GCP, AWS, etc.)
+# - Cross-cloud operations: Azure can update certain fields via OCI APIs using extracted identifiers
+
+# Cloud-specific API endpoints and field mappings
+azure:
+  field_mapping:
+    azure_id: [azure.id (r*)]
+    azure_region: [azure.location (c*r*)]
+    display_name: [azure.properties.displayName (c*r*u), oci.displayName (u)]
+    admin_password: [azure.properties.adminPassword (c*u), oci.adminPassword (u)]
+    db_name: [azure.properties.databaseName (c*r*), oci.dbName (u)]
+    db_version: [azure.properties.dbVersion (cr*u), oci.dbVersion (u)]
+    db_workload: [oci.dbWorkload (u)]
+    compute_count: [azure.properties.computeCount (c*r*u), oci.computeCount (u)]
+    compute_model: [azure.properties.computeModel (c*r*), oci.computeModel (u)]
+    cpu_core_count: [azure.properties.cpuCoreCount (r*u), oci.cpuCoreCount (u)]
+    ocpu_count: [oci.ocpuCount (u)]
+    data_storage_size_in_tbs: [azure.properties.dataStorageSizeInTbs (c*r*u), oci.dataStorageSizeInTbs (u)]
+    data_storage_size_in_gbs: [azure.properties.dataStorageSizeInGbs (r*u), oci.dataStorageSizeInGBs (u)]
+    character_set: [azure.properties.characterSet (c*r*)]
+    ncharacter_set: [azure.properties.ncharacterSet (c*r*)]
+    subnet_id: [azure.properties.subnetId (c*r*)]
+    vnet_id: [azure.properties.vnetId (c*r*)]
+    is_auto_scaling_enabled: [azure.properties.isAutoScalingEnabled (cru), oci.isAutoScalingEnabled (u)]
+    is_auto_scaling_for_storage_enabled: [azure.properties.isAutoScalingForStorageEnabled (cru), oci.isAutoScalingForStorageEnabled (u)]
+    is_mtls_connection_required: [azure.properties.isMtlsConnectionRequired (cru), oci.isMtlsConnectionRequired (u)]
+    is_local_data_guard_enabled: [azure.properties.isLocalDataGuardEnabled (cru), oci.isLocalDataGuardEnabled (u)]
+    license_model: [azure.properties.licenseModel (cru), oci.licenseModel (u)]
+    database_edition: [azure.properties.databaseEdition (r*), oci.databaseEdition (u)]
+    whitelisted_ips: [azure.properties.whitelistedIps (cru), oci.whitelistedIps (u)]
+    backup_retention_period_in_days: [azure.properties.backupRetentionPeriodInDays (cru), oci.backupRetentionPeriodInDays (u)]
+    autonomous_maintenance_schedule_type: [azure.properties.autonomousMaintenanceScheduleType (cru), oci.autonomousMaintenanceScheduleType (u)]
+    local_adg_auto_failover_max_data_loss_limit: [azure.properties.localAdgAutoFailoverMaxDataLossLimit (cru), oci.localAdgAutoFailoverMaxDataLossLimit (u)]
+    open_mode: [azure.properties.openMode (r), oci.openMode (r*u)]
+    permission_level: [azure.properties.permissionLevel (r*u), oci.permissionLevel (u)]
+    role: [azure.properties.role (r*u)]
+    peer_db_id: [azure.properties.peerDbId (r*u), oci.peerDbId (u)]
+    customer_contacts: [azure.properties.customerContacts (ru), oci.customerContacts (u)]
+    lifecycle_state: [azure.properties.lifecycleState (r*), oci.lifecycleState (r)]
+    provisioning_state: [azure.properties.provisioningState (r*)]
+    time_created: [azure.properties.timeCreated (r*), oci.timeCreated (r)]
+
+    # Tags - separate for each cloud
+    azure_tags: [azure.tags (cru)]
+    oci_tags: [oci.freeformTags (ru)]
+
+    # OCI-specific fields (readable/updatable via OCI API only)
+    # These fields refer to OCI infrastructure, not Azure equivalents
+    oci_compartment_id: [oci.compartmentId (r)]
+    oci_open_mode: [oci.openMode (ru)]
+    oci_db_workload: [oci.dbWorkload (ru)]
+    oci_nsg_ids: [oci.nsgIds (ru)]
+    oci_subnet_id: [oci.subnetId (ru)]
+    oci_private_endpoint_label: [oci.privateEndpointLabel (ru)]
+    oci_private_endpoint_ip: [oci.privateEndpointIp (ru)]
+    oci_is_dedicated: [oci.isDedicated (r)]
+    oci_is_free_tier: [oci.isFreeTier (ru)]
+    oci_is_dev_tier: [oci.isDevTier (ru)]
+    oci_is_acl_enabled: [oci.isAclEnabled (ru)]
+    oci_standby_whitelisted_ips: [oci.standbyWhitelistedIps (ru)]
+    oci_are_primary_whitelisted_ips_used: [oci.arePrimaryWhitelistedIpsUsed (ru)]
+    oci_scheduled_operations: [oci.scheduledOperations (ru)]
+    oci_is_refreshable_clone: [oci.isRefreshableClone (ru)]
+    oci_refreshable_mode: [oci.refreshableMode (ru)]
+    oci_db_tools_details: [oci.dbToolsDetails (ru)]
+    oci_resource_pool_leader_id: [oci.resourcePoolLeaderId (ru)]
+    oci_in_memory_percentage: [oci.inMemoryPercentage (ru)]
+
+    # Cross-cloud fields: extracted from Azure response for OCI API calls
+    oci_url: [azure.properties.ociUrl (r)]
+    oci_region: [azure.properties.ociUrl|(?i:region=)([^?&/]+) (r)]
+    oci_ocid: [azure.properties.ociUrl|(?i:autonomousDatabases/)([^?&/]+) (r)]
+    oci_compartment_id: [azure.properties.ociUrl|(?i:compartmentId=)([^?&/]+) (r)]
+
+  # Azure native CRUD operations
+  create: "PUT https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/autonomousDatabases/{name}?api-version=2023-09-01"
+  read: "GET https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/autonomousDatabases/{name}?api-version=2023-09-01"
+  update: "PATCH https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/autonomousDatabases/{name}?api-version=2023-09-01"
+  delete: "DELETE https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group}/providers/Oracle.Database/autonomousDatabases/{name}?api-version=2023-09-01"
+
+  # Cross-cloud operations: OCI API calls using extracted oci_region and oci_ocid
+  oci_read: "GET https://database.{oci_region}.oraclecloud.com/20160918/autonomousDatabases/{oci_ocid}"
+  oci_update: "PUT https://database.{oci_region}.oraclecloud.com/20160918/autonomousDatabases/{oci_ocid}"
