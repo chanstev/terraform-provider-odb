@@ -253,6 +253,16 @@ func ExtractWithRegex(input, pattern string) (string, error) {
 	return matches[1], nil
 }
 
+// ParseMethodAndURL parses a string like "PUT https://..." into method and URL
+func ParseMethodAndURL(methodURL string) (method, url string) {
+	parts := strings.SplitN(methodURL, " ", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	// If no method specified, assume GET
+	return "GET", methodURL
+}
+
 // GetAbsoluteConfigPath returns the absolute path to the config directory
 func GetAbsoluteConfigPath() (string, error) {
 	// Try to find config directory relative to executable or working directory

@@ -510,8 +510,11 @@ func (r *AutonomousDatabaseResource) createInAzure(ctx context.Context, plan *Au
 		return fmt.Errorf("azure_resource_group is required when cloud=azure")
 	}
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.Create)
+
 	// Build Azure CREATE URL from config
-	url := BuildURL(config.Azure.Create, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"subscription_id": subscriptionID,
 		"resource_group":  resourceGroup,
 		"name":            plan.Name.ValueString(),
@@ -521,7 +524,7 @@ func (r *AutonomousDatabaseResource) createInAzure(ctx context.Context, plan *Au
 	body := r.buildAzureCreateBody(plan)
 
 	// Execute Azure CLI
-	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, "PUT", url, body)
+	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, method, url, body)
 	if err != nil {
 		return fmt.Errorf("Azure CLI execution failed: %w", err)
 	}
@@ -677,7 +680,9 @@ func (r *AutonomousDatabaseResource) waitForAvailable(ctx context.Context, plan 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
-	url := BuildURL(config.Azure.Read, map[string]string{
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.Read)
+	url := BuildURL(urlTemplate, map[string]string{
 		"subscription_id": subscriptionID,
 		"resource_group":  resourceGroup,
 		"name":            plan.Name.ValueString(),
@@ -691,7 +696,7 @@ func (r *AutonomousDatabaseResource) waitForAvailable(ctx context.Context, plan 
 			return fmt.Errorf("timeout waiting for AVAILABLE state after %v", maxDuration)
 		case <-ticker.C:
 			// Poll Azure
-			respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, "GET", url, nil)
+			respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, method, url, nil)
 			if err != nil {
 				return fmt.Errorf("failed to poll Azure: %w", err)
 			}
@@ -743,8 +748,11 @@ func (r *AutonomousDatabaseResource) updateViaOCI(ctx context.Context, plan *Aut
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.OCIUpdate)
+
 	// Build OCI UPDATE URL
-	url := BuildURL(config.Azure.OCIUpdate, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"oci_region": plan.OCIRegion.ValueString(),
 		"oci_ocid":   plan.OCIOCID.ValueString(),
 	})
@@ -771,7 +779,7 @@ func (r *AutonomousDatabaseResource) updateViaOCI(ctx context.Context, plan *Aut
 	}
 
 	// Execute OCI CLI
-	respBytes, err := r.providerData.CLIExecutor.ExecuteOCICLI(ctx, "PUT", url, body)
+	respBytes, err := r.providerData.CLIExecutor.ExecuteOCICLI(ctx, method, url, body)
 	if err != nil {
 		return fmt.Errorf("OCI CLI execution failed: %w", err)
 	}
@@ -801,15 +809,18 @@ func (r *AutonomousDatabaseResource) readFromAzure(ctx context.Context, state *A
 	azureID := state.AzureID.ValueString()
 	subscriptionID, resourceGroup, name := r.parseAzureID(azureID)
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.Read)
+
 	// Build Azure READ URL
-	url := BuildURL(config.Azure.Read, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"subscription_id": subscriptionID,
 		"resource_group":  resourceGroup,
 		"name":            name,
 	})
 
 	// Execute Azure CLI
-	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, "GET", url, nil)
+	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, method, url, nil)
 	if err != nil {
 		return fmt.Errorf("Azure CLI execution failed: %w", err)
 	}
@@ -843,14 +854,17 @@ func (r *AutonomousDatabaseResource) readFromOCI(ctx context.Context, state *Aut
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.OCIRead)
+
 	// Build OCI READ URL
-	url := BuildURL(config.Azure.OCIRead, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"oci_region": state.OCIRegion.ValueString(),
 		"oci_ocid":   state.OCIOCID.ValueString(),
 	})
 
 	// Execute OCI CLI
-	respBytes, err := r.providerData.CLIExecutor.ExecuteOCICLI(ctx, "GET", url, nil)
+	respBytes, err := r.providerData.CLIExecutor.ExecuteOCICLI(ctx, method, url, nil)
 	if err != nil {
 		tflog.Warn(ctx, "Failed to read from OCI", map[string]interface{}{
 			"error": err.Error(),
@@ -900,8 +914,11 @@ func (r *AutonomousDatabaseResource) updateInAzure(ctx context.Context, plan, st
 	azureID := state.AzureID.ValueString()
 	subscriptionID, resourceGroup, name := r.parseAzureID(azureID)
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.Update)
+
 	// Build Azure UPDATE URL
-	url := BuildURL(config.Azure.Update, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"subscription_id": subscriptionID,
 		"resource_group":  resourceGroup,
 		"name":            name,
@@ -928,7 +945,7 @@ func (r *AutonomousDatabaseResource) updateInAzure(ctx context.Context, plan, st
 	}
 
 	// Execute Azure CLI
-	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, "PATCH", url, body)
+	respBytes, err := r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, method, url, body)
 	if err != nil {
 		return fmt.Errorf("Azure CLI execution failed: %w", err)
 	}
@@ -975,15 +992,18 @@ func (r *AutonomousDatabaseResource) deleteFromAzure(ctx context.Context, state 
 	azureID := state.AzureID.ValueString()
 	subscriptionID, resourceGroup, name := r.parseAzureID(azureID)
 
+	// Parse method and URL from config
+	method, urlTemplate := ParseMethodAndURL(config.Azure.Delete)
+
 	// Build Azure DELETE URL
-	url := BuildURL(config.Azure.Delete, map[string]string{
+	url := BuildURL(urlTemplate, map[string]string{
 		"subscription_id": subscriptionID,
 		"resource_group":  resourceGroup,
 		"name":            name,
 	})
 
 	// Execute Azure CLI
-	_, err = r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, "DELETE", url, nil)
+	_, err = r.providerData.CLIExecutor.ExecuteAzureCLI(ctx, method, url, nil)
 	if err != nil {
 		return fmt.Errorf("Azure CLI execution failed: %w", err)
 	}
