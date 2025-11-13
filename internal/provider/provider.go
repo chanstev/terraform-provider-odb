@@ -40,8 +40,9 @@ type OCIConfig struct {
 
 // OMCProviderModel describes the provider data model.
 type OMCProviderModel struct {
-	Azure *AzureConfig `tfsdk:"azure"`
-	OCI   *OCIConfig   `tfsdk:"oci"`
+	ConfigPath types.String `tfsdk:"config_path"`
+	Azure      *AzureConfig `tfsdk:"azure"`
+	OCI        *OCIConfig   `tfsdk:"oci"`
 }
 
 func (p *OMCProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -53,6 +54,10 @@ func (p *OMCProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Oracle Multi-Cloud (OMC) provider for managing Oracle Database resources across multiple clouds",
 		Attributes: map[string]schema.Attribute{
+			"config_path": schema.StringAttribute{
+				MarkdownDescription: "Path to directory containing YAML configuration files (default: ./config)",
+				Optional:            true,
+			},
 			"azure": schema.SingleNestedAttribute{
 				MarkdownDescription: "Azure authentication configuration. Uses Azure CLI by default.",
 				Optional:            true,
@@ -90,12 +95,18 @@ func (p *OMCProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		return
 	}
 
+	// Get config path from provider configuration
+	configPath := "config"
+	if !data.ConfigPath.IsNull() && data.ConfigPath.ValueString() != "" {
+		configPath = data.ConfigPath.ValueString()
+	}
+
 	// Load YAML configurations
-	configLoader, err := NewConfigLoader()
+	configLoader, err := NewConfigLoaderWithPath(configPath)
 	if err != nil {
 		resp.Diagnostics.AddWarning(
 			"Configuration Loading Warning",
-			fmt.Sprintf("Failed to load YAML configurations: %s. Will use defaults.", err.Error()),
+			fmt.Sprintf("Failed to load YAML configurations from '%s': %s. Will use defaults.", configPath, err.Error()),
 		)
 	}
 

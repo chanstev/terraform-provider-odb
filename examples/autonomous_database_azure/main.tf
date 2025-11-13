@@ -8,6 +8,10 @@ terraform {
 }
 
 provider "omc" {
+  # Path to YAML configuration files (optional, defaults to ./config)
+  # For dev_overrides, use absolute path to your provider repo
+  config_path = "/home/steven/github/chanstev/terraform-provider-odb/config"
+
   # Azure authentication
   azure {
     subscription_id = var.azure_subscription_id

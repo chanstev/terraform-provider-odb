@@ -82,13 +82,20 @@ type GlobalConfig struct {
 
 // ConfigLoader loads and parses YAML configurations
 type ConfigLoader struct {
+	ConfigPath      string
 	GlobalConfig    *GlobalConfig
 	ResourceConfigs map[string]*ResourceConfig
 }
 
-// NewConfigLoader creates a new config loader and loads all configs
+// NewConfigLoader creates a new config loader with default path and loads all configs
 func NewConfigLoader() (*ConfigLoader, error) {
+	return NewConfigLoaderWithPath("config")
+}
+
+// NewConfigLoaderWithPath creates a new config loader with custom path and loads all configs
+func NewConfigLoaderWithPath(configPath string) (*ConfigLoader, error) {
 	loader := &ConfigLoader{
+		ConfigPath:      configPath,
 		ResourceConfigs: make(map[string]*ResourceConfig),
 	}
 
@@ -107,14 +114,11 @@ func NewConfigLoader() (*ConfigLoader, error) {
 
 // loadGlobalConfig loads the global.yaml configuration
 func (l *ConfigLoader) loadGlobalConfig() error {
-	// Try to find config file
-	data, err := os.ReadFile("config/global.yaml")
+	configFile := filepath.Join(l.ConfigPath, "global.yaml")
+
+	data, err := os.ReadFile(configFile)
 	if err != nil {
-		// Try relative to working directory
-		data, err = os.ReadFile("../../config/global.yaml")
-		if err != nil {
-			return fmt.Errorf("failed to read global.yaml: %w", err)
-		}
+		return fmt.Errorf("failed to read global.yaml from %s: %w", configFile, err)
 	}
 
 	l.GlobalConfig = &GlobalConfig{}
@@ -127,17 +131,11 @@ func (l *ConfigLoader) loadGlobalConfig() error {
 
 // loadResourceConfig loads a resource configuration file
 func (l *ConfigLoader) loadResourceConfig(resourceName string) error {
-	filename := fmt.Sprintf("config/%s.yaml", resourceName)
+	configFile := filepath.Join(l.ConfigPath, fmt.Sprintf("%s.yaml", resourceName))
 
-	// Try to find config file
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(configFile)
 	if err != nil {
-		// Try relative path
-		filename = fmt.Sprintf("../../config/%s.yaml", resourceName)
-		data, err = os.ReadFile(filename)
-		if err != nil {
-			return fmt.Errorf("failed to read %s.yaml: %w", resourceName, err)
-		}
+		return fmt.Errorf("failed to read %s.yaml from %s: %w", resourceName, configFile, err)
 	}
 
 	config := &ResourceConfig{}
