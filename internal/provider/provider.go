@@ -16,11 +16,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure ODBProvider satisfies various provider interfaces.
-var _ provider.Provider = &ODBProvider{}
+// Ensure OMCProvider satisfies various provider interfaces.
+var _ provider.Provider = &OMCProvider{}
 
-// ODBProvider defines the provider implementation.
-type ODBProvider struct {
+// OMCProvider defines the provider implementation.
+type OMCProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
@@ -38,18 +38,18 @@ type OCIConfig struct {
 	ConfigFileProfile types.String `tfsdk:"config_file_profile"`
 }
 
-// ODBProviderModel describes the provider data model.
-type ODBProviderModel struct {
+// OMCProviderModel describes the provider data model.
+type OMCProviderModel struct {
 	Azure *AzureConfig `tfsdk:"azure"`
 	OCI   *OCIConfig   `tfsdk:"oci"`
 }
 
-func (p *ODBProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+func (p *OMCProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "omc"
 	resp.Version = p.version
 }
 
-func (p *ODBProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *OMCProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Oracle Multi-Cloud (OMC) provider for managing Oracle Database resources across multiple clouds",
 		Attributes: map[string]schema.Attribute{
@@ -81,8 +81,8 @@ func (p *ODBProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 	}
 }
 
-func (p *ODBProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ODBProviderModel
+func (p *OMCProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data OMCProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
@@ -114,23 +114,23 @@ func (p *ODBProvider) Configure(ctx context.Context, req provider.ConfigureReque
 type ProviderData struct {
 	CLIExecutor  *CLIExecutor
 	ConfigLoader *ConfigLoader
-	Config       *ODBProviderModel
+	Config       *OMCProviderModel
 }
 
-func (p *ODBProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *OMCProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAutonomousDatabaseResource,
 		NewBaseDatabaseResource,
 	}
 }
 
-func (p *ODBProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+func (p *OMCProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		// No ephemeral resources implemented yet
 	}
 }
 
-func (p *ODBProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *OMCProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewOMCContextDataSource,
 		NewAutonomousDatabaseDataSource,
@@ -138,7 +138,7 @@ func (p *ODBProvider) DataSources(ctx context.Context) []func() datasource.DataS
 	}
 }
 
-func (p *ODBProvider) Functions(ctx context.Context) []func() function.Function {
+func (p *OMCProvider) Functions(ctx context.Context) []func() function.Function {
 	return []func() function.Function{
 		// No functions implemented yet
 	}
@@ -146,7 +146,7 @@ func (p *ODBProvider) Functions(ctx context.Context) []func() function.Function 
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ODBProvider{
+		return &OMCProvider{
 			version: version,
 		}
 	}

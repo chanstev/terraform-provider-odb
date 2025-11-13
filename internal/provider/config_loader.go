@@ -49,26 +49,26 @@ type CloudResourceConfig struct {
 type GlobalConfig struct {
 	DefaultTimeout int `yaml:"default_timeout"`
 	Retry          struct {
-		MaxAttempts        int     `yaml:"max_attempts"`
-		InitialDelayMs     int     `yaml:"initial_delay_ms"`
-		MaxDelayMs         int     `yaml:"max_delay_ms"`
-		BackoffMultiplier  float64 `yaml:"backoff_multiplier"`
+		MaxAttempts       int     `yaml:"max_attempts"`
+		InitialDelayMs    int     `yaml:"initial_delay_ms"`
+		MaxDelayMs        int     `yaml:"max_delay_ms"`
+		BackoffMultiplier float64 `yaml:"backoff_multiplier"`
 	} `yaml:"retry"`
 	AsyncOperations struct {
 		Azure struct {
-			StatusField                       string   `yaml:"status_field"`
-			ProvisioningField                 string   `yaml:"provisioning_field"`
-			TerminalStates                    struct {
+			StatusField       string `yaml:"status_field"`
+			ProvisioningField string `yaml:"provisioning_field"`
+			TerminalStates    struct {
 				Lifecycle    []string `yaml:"lifecycle"`
 				Provisioning []string `yaml:"provisioning"`
 			} `yaml:"terminal_states"`
-			InProgressStates                  struct {
+			InProgressStates struct {
 				Lifecycle    []string `yaml:"lifecycle"`
 				Provisioning []string `yaml:"provisioning"`
 			} `yaml:"in_progress_states"`
-			PollIntervalSeconds               int  `yaml:"poll_interval_seconds"`
-			MaxPollDurationMinutes            int  `yaml:"max_poll_duration_minutes"`
-			WaitForAvailableBeforeOCIUpdate   bool `yaml:"wait_for_available_before_oci_update"`
+			PollIntervalSeconds             int  `yaml:"poll_interval_seconds"`
+			MaxPollDurationMinutes          int  `yaml:"max_poll_duration_minutes"`
+			WaitForAvailableBeforeOCIUpdate bool `yaml:"wait_for_available_before_oci_update"`
 		} `yaml:"azure"`
 		OCI struct {
 			StatusField            string   `yaml:"status_field"`
@@ -82,7 +82,7 @@ type GlobalConfig struct {
 
 // ConfigLoader loads and parses YAML configurations
 type ConfigLoader struct {
-	GlobalConfig   *GlobalConfig
+	GlobalConfig    *GlobalConfig
 	ResourceConfigs map[string]*ResourceConfig
 }
 
@@ -262,7 +262,7 @@ func GetAbsoluteConfigPath() (string, error) {
 		"config",
 		"../config",
 		"../../config",
-		filepath.Join(os.Getenv("HOME"), ".terraform-provider-odb", "config"),
+		filepath.Join(os.Getenv("HOME"), ".terraform-provider-omc", "config"),
 	}
 
 	for _, candidate := range candidates {

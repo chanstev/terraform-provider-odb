@@ -1,4 +1,4 @@
-module github.com/chanstev/terraform-provider-odb
+module github.com/chanstev/terraform-provider-omc
 
 go 1.24.0
 
