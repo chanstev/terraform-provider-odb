@@ -29,7 +29,8 @@ resource "omc_autonomous_database" "example" {
   cloud = "azure"
 
   # Azure-specific configuration
-  azure_region = var.azure_region
+  azure_region         = var.azure_region
+  azure_resource_group = var.azure_resource_group
 
   # Resource naming
   name         = var.database_name

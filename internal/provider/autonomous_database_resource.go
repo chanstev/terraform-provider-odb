@@ -46,6 +46,7 @@ type AutonomousDatabaseResourceModel struct {
 	// Azure-specific
 	AzureID                  types.String `tfsdk:"azure_id"`
 	AzureRegion              types.String `tfsdk:"azure_region"`
+	AzureResourceGroup       types.String `tfsdk:"azure_resource_group"`
 	AzureTags                types.Map    `tfsdk:"azure_tags"`
 	SubnetID                 types.String `tfsdk:"subnet_id"`
 	VnetID                   types.String `tfsdk:"vnet_id"`
@@ -130,6 +131,10 @@ func (r *AutonomousDatabaseResource) Schema(_ context.Context, _ resource.Schema
 			},
 			"azure_region": schema.StringAttribute{
 				MarkdownDescription: "Azure region (e.g., eastus, westus2)",
+				Optional:            true,
+			},
+			"azure_resource_group": schema.StringAttribute{
+				MarkdownDescription: "Azure resource group name",
 				Optional:            true,
 			},
 			"azure_tags": schema.MapAttribute{
@@ -491,7 +496,7 @@ func (r *AutonomousDatabaseResource) createInAzure(ctx context.Context, plan *Au
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Get provider config for subscription_id, resource_group, etc.
+	// Get provider config for subscription_id and resource_group from plan
 	providerConfig := r.providerData.Config
 	var subscriptionID, resourceGroup string
 
@@ -499,9 +504,11 @@ func (r *AutonomousDatabaseResource) createInAzure(ctx context.Context, plan *Au
 		subscriptionID = providerConfig.Azure.SubscriptionID.ValueString()
 	}
 
-	// TODO: Get resource_group from provider config or plan
-	// For now, use environment variable
-	resourceGroup = plan.AzureRegion.ValueString() + "-rg" // Simplified
+	// Get resource_group from plan (required for Azure)
+	resourceGroup = plan.AzureResourceGroup.ValueString()
+	if resourceGroup == "" {
+		return fmt.Errorf("azure_resource_group is required when cloud=azure")
+	}
 
 	// Build Azure CREATE URL from config
 	url := BuildURL(config.Azure.Create, map[string]string{
